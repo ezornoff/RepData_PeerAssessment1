@@ -1,25 +1,135 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproductible Research - Course Project 1"
+author: "ezornoff"
+date: "06/08/2020"
+output: html_document
+keep_md: true
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## Reading the file and processing 
 
-
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
+```{r}
+data = read.csv("activity.csv")
+data$date = as.Date(data$date, format = "%Y-%m-%d")
+data$interval = as.factor(data$interval)
+```
 
 
+## What is the total number of steps per day?
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+# plotting the number of steps per day
+
+plot(data$date, data$steps, type = "h") 
+
+# calculating the mean and median for each day
+
+mn = with(data, tapply(steps, date, mean))
+med = with(data, tapply(steps, date, median))
+dat = unique(data$date)
+data1 = data.frame(date = dat, mean = mn, median = med)
+
+# plotting the mean
+
+par(mfrow = c(1,2), mar = c(2, 2, 1, 1))
+with(data1, plot(date, mean, pch = 19, type = "l", ylab = "steps"))
+with(data1, plot(date, median, pch = 19, type = "l"))
+```
+
+There's 8 days that the all the observations are NA.
+
+```{r}
+subset(data1, is.na(data1$mean))
+```
+
+All the median of the other days are equal to 0, because the non zero observations are less frequent than the zero observations.
+
+```{r}
+d = "2012-11-03"
+z = sum(data$steps[data$date == d] == 0)
+nZ = sum(!data$steps[data$date == d] == 0)
+```
+
+For example, on day `r d` there is `r z` observations and only `r nZ` non zero obsevations
+
+## What is the average daily pattern?
+
+```{r}
+mn_int = with(data, tapply(steps, interval, mean, na.rm = TRUE))
+pat = data.frame(interval = unique(data$interval), mean = mn_int)
+with(pat, plot(interval, mn_int, type = "l"))
+m = max(mn_int)
+int = pat$interval[which.max(mn_int)]
+```
+
+The maximum number of steps were on interval `r int` and the max average number of steps were `r m`
+
+## Imputting missing values
+
+```{r}
+n = sum(is.na(data$steps))
+```
+
+The total number of missing (NA) step values is `r n`.
+
+The strategy to add values to the NA observations is to use the mean for the same 5 minute interval. This was choosen because there are days, actually 8 days, with all the observations equals NA.
+
+```{r}
+# creating new data frame
+data0 = data
+
+# inserting missing values
+for (i in 1:nrow(data0)) {
+        if (is.na(data0$steps[i])) {
+                data0$steps[i] = mean(data0$steps[data0$interval == data0$interval[i]],                        na.rm = TRUE)
+        }
+}
+
+# plotting the number of steps per day
+plot(data0$date, data0$steps, type = "h") 
+
+# calculating the mean and median for each day
+
+mn0 = with(data0, tapply(steps, date, mean))
+med0 = with(data0, tapply(steps, date, median))
+dat0 = unique(data0$date)
+data2 = data.frame(date = dat0, mean = mn0, median = med0)
+
+# plotting the mean
+
+par(mfrow = c(1,2), mar = c(2, 2, 1, 1))
+with(data2, plot(date, mean, pch = 19, type = "l"))
+with(data2, plot(date, median, pch = 19, type = "l"))
+```
+
+As we can see on the graphics, all the days now have values. The values for the days that were completly without observations (NA) are equal to the gereral mean. The median for these days have a positive and equal value because there are no more zeros on the observations for these days.
+
+## Are there diferences in activity patterns between weekdays and weekends?
+
+```{r}
+# adding a column with the weekday
+data0$weekday = weekdays(data0$date, abbreviate = TRUE)
+
+# defining factor weekday or weekend
+for (i in 1:nrow(data0)) {
+        if (data0$weekday[i] == "Sáb" || data0$weekday[i] == "Dom") {data0$week[i] =                    "Weekend"} else {data0$week[i] = "Weekday"}
+}
+data0$week = as.factor(data0$week)
+
+# calculating the mean per type of day and interval and setting the data frame
+mn1 = with(data0, tapply(steps, list(interval, week), mean))
+mn1 = as.data.frame(mn1)
+int1 = rownames(mn1)
+mn1 = stack(mn1)
+mn1$interval = as.numeric(int1)
+
+# gerenating the graphic
+library(ggplot2)
+qplot(interval, values, data = mn1, facets = ind~., geom = "line")
+```
+
+As we can see from the graphic above on weekdays there's more step in average on the begining and on the end of the intervals, but on the middle range of the intervals it seems that there's more steps on avarage on weekends.
