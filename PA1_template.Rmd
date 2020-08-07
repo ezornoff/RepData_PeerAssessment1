@@ -2,8 +2,7 @@
 title: "Reproductible Research - Course Project 1"
 author: "ezornoff"
 date: "06/08/2020"
-output: html_document
-keep_md: true
+output: md_document
 ---
 
 ```{r setup, include=FALSE}
